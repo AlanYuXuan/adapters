@@ -1,10 +1,10 @@
 jobs_dir: jobs
 n_attempts: 1
 timeout_multiplier: 1.0
-orchestrator:
-  type: local
-  n_concurrent_trials: 4
-  quiet: false
+n_concurrent_trials: 4
+quiet: false
+retry:
+  max_retries: 0
 environment:
   type: docker
   # type: daytona
@@ -21,4 +21,4 @@ agents:
   # - name: claude-code
   #   model_name: anthropic/<model>
 datasets:
-  - path: datasets/chess-puzzles
+  - path: datasets/chess-puzzles-separate

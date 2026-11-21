@@ -107,6 +107,7 @@ def test_generation_layout_and_oracle(tmp_path):
             "environment/Dockerfile",
             "solution/solve.sh",
             "tests/test.sh",
+            "tests/Dockerfile",
             "tests/grade.py",
             "tests/scoring.py",
             "tests/record.json",
@@ -166,10 +167,13 @@ def test_smaller_selection_cannot_leave_stale_tasks(tmp_path):
     assert len(manifest["task_ids"]) == 3  # untouched, still matches the directory
 
 
-def test_default_output_dir_is_named_chess_puzzles():
+def test_default_output_dir_matches_reference_job():
     from chess_puzzles.main import DEFAULT_OUTPUT_DIR
 
-    assert DEFAULT_OUTPUT_DIR.parts[-2:] == ("datasets", "chess-puzzles")
+    import yaml
+    config = yaml.safe_load(Path("run_chess-puzzles.yaml").read_text())
+    assert DEFAULT_OUTPUT_DIR == Path(config["datasets"][0]["path"])
+    assert DEFAULT_OUTPUT_DIR.parts[-2:] == ("datasets", "chess-puzzles-separate")
 
 
 def test_pin_constants_are_consistent():

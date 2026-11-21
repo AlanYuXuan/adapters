@@ -10,7 +10,7 @@
         "size": 100,
         "harness": "agent",
         "supported_agents": [
-          "None"
+          "qa_agent@2.0.1"
         ],
         "adaptable": true,
         "notes": "Epoch AI Chess Puzzles v2. Upstream runs a custom Inspect AI loop (qa_agent) whose only tool is submit_answer; no Harbor-compatible CLI agents are supported upstream."
@@ -24,12 +24,12 @@
         "parity_sampling_rate": 0.0,
         "registry_benchmark_size": 0,
         "added_agents": [
-          "None"
+          "epoch-chess-v2@2.0.1-adapter-0.2.0"
         ],
         "parity_matching_agents": [],
         "parity_unmatching_agents": [],
         "parity_costs": null,
-        "notes": "WIP: CLI file-answer variant, 100/100 local Docker oracle on 2026-11-16. No completed model parity or registry publication. Scenario 3 custom agent remains to be implemented."
+        "notes": "WIP: 100/100 CLI oracle on Harbor 0.27.0 with separate verification in local Docker on 2026-11-21; six original/CLI correct, wrong and missing-answer controls passed. Original-prompt qa_agent and matched local context-counting compatibility mode are implemented and tested with simulated responses. Ten puzzle IDs are predeclared for Haiku 5.5 parity. No completed model parity or registry publication."
       }
     ]
   }

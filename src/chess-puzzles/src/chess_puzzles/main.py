@@ -8,9 +8,8 @@ from pathlib import Path
 
 from .adapter import UPSTREAM_COMMIT, ChessPuzzlesAdapter
 
-# Relative to the working directory, like run_chess-puzzles.yaml: run both from the same place
-# (the repository root in the adapters repo).
-DEFAULT_OUTPUT_DIR = Path("datasets") / "chess-puzzles"
+# Run from the adapter package directory, matching run_chess-puzzles.yaml.
+DEFAULT_OUTPUT_DIR = Path("datasets") / "chess-puzzles-separate"
 
 
 def main() -> None:
@@ -51,6 +50,10 @@ def main() -> None:
         default=Path(".cache/chess-puzzles"),
         help="Where the downloaded puzzles.csv is cached",
     )
+    parser.add_argument("--variant", choices=("cli", "original"), default=None,
+                        help="Defaults to original for --split parity, cli otherwise")
+    parser.add_argument("--split", choices=("full", "parity"), default="full",
+                        help="parity selects the ten predeclared row IDs")
     args = parser.parse_args()
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be positive")
@@ -62,6 +65,8 @@ def main() -> None:
         task_ids=args.task_ids,
         data_path=args.data_path,
         cache_dir=args.cache_dir,
+        variant=args.variant,
+        split=args.split,
     )
     tasks = adapter.run()
     print(f"Generated {len(tasks)} tasks in {args.output_dir}")

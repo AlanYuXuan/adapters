@@ -29,6 +29,7 @@ DATA_URL = (
 # 2.1.0 (SAN also accepted) as "unreleased", and the pinned commit predates it.
 SCORING_VERSION = "2.0.1"
 EXPECTED_ROWS = 100
+PARITY_IDS = (4, 14, 15, 18, 29, 32, 36, 82, 87, 95)
 
 PACKAGE_DIR = Path(__file__).parent
 TEMPLATE_DIR = PACKAGE_DIR / "task-template"
@@ -137,6 +138,8 @@ class ChessPuzzlesAdapter:
         task_ids: list[str] | None = None,
         data_path: Path | None = None,
         cache_dir: Path | None = None,
+        variant: str | None = None,
+        split: str = "full",
         **kwargs: Any,
     ):
         self.output_dir = Path(output_dir)
@@ -145,8 +148,16 @@ class ChessPuzzlesAdapter:
         self.task_ids = task_ids
         self.data_path = data_path
         self.cache_dir = cache_dir or Path(".cache/chess-puzzles")
+        if variant is None:
+            variant = "original" if split == "parity" else "cli"
+        if variant not in ("cli", "original") or split not in ("full", "parity"):
+            raise ValueError("Unknown variant or split")
+        self.variant = variant
+        self.split = split
 
     def select(self, records: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if self.split == "parity":
+            records = [r for r in records if r["id"] in PARITY_IDS]
         if self.task_ids:
             wanted = normalize_task_ids(self.task_ids)
             unknown = wanted - {record["id"] for record in records}
@@ -164,6 +175,11 @@ class ChessPuzzlesAdapter:
         for target in targets:
             if target.exists() and not self.overwrite:
                 raise FileExistsError(f"Task exists; pass --overwrite to replace: {target}")
+        prior = self.output_dir / "generation_manifest.json"
+        if prior.exists():
+            previous = json.loads(prior.read_text())
+            if previous.get("variant", "cli") != self.variant:
+                raise ValueError("Changing instruction variant requires a fresh output directory")
         # The manifest describes the whole directory, so refuse to leave tasks behind that
         # are not part of this selection.
         selected = {target.name for target in targets}
@@ -185,6 +201,10 @@ class ChessPuzzlesAdapter:
             "upstream_commit": UPSTREAM_COMMIT,
             "data_sha256": DATA_SHA256,
             "scoring_version": SCORING_VERSION,
+            "verifier_mode": "separate",
+            "submission_artifacts": ["/app/answer.txt"],
+            "variant": self.variant,
+            "split": self.split,
             "generated_count": len(targets),
             "task_ids": [task_id(record["id"]) for record in records],
         }
@@ -203,9 +223,25 @@ class ChessPuzzlesAdapter:
             config = config.replace("__TASK_ID__", name).replace(
                 "__SAMPLE_ID__", str(record["id"])
             )
+            if self.variant == "original":
+                config = config.replace("epoch-ai/chess-puzzles__", "epoch-ai/chess-puzzles-original__")
             (task / "task.toml").write_text(config)
 
-            (task / "instruction.md").write_text(render_instruction(record["fen"]))
+            instruction = (
+                QUESTION_TEMPLATE.format(prompt=record["fen"])
+                if self.variant == "original" else render_instruction(record["fen"])
+            )
+            (task / "instruction.md").write_text(instruction)
+            if self.variant == "original":
+                problem = {"id": record["id"], "fen": record["fen"], "variant": "original"}
+                (task / "environment" / "problem.json").write_text(json.dumps(problem) + "\n")
+                with (task / "environment" / "Dockerfile").open("a") as dockerfile:
+                    dockerfile.write("COPY problem.json /app/problem.json\n")
+                # qa_agent executes on the host; its puzzle container needs no network.
+                (task / "environment" / "docker-compose.yaml").write_text(
+                    'services:\n  main:\n    build: .\n    command: ["sleep", "infinity"]\n'
+                    '    network_mode: none\n'
+                )
 
             # The gold move lives only under tests/ and solution/, which are not part of the
             # agent's container image.

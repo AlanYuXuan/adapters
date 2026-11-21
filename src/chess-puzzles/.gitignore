@@ -14,3 +14,9 @@ datasets/
 jobs/
 .cache/
 .pytest_cache/
+.env
+.env.*
+!.env.example
+
+# Machine-specific run settings (never credentials)
+parity_settings.local.json
